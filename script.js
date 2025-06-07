@@ -23,21 +23,22 @@
         CHUNK_SIZE: 30000,
         MAX_TOKENS: 2000,
         TEMPERATURE: 0.3,
-        PROMPT: `Aşağıdaki metni Türkçe olarak profesyonel ve akademik düzeyde özetleyin. Özet şu özelliklere sahip olmalıdır:
+        PROMPT: `Please professionally and academically summarize the following text in Turkish. The summary should have the following features:
 
-1. **Yapı**: Ana başlıklar (##) ve alt başlıklar (###) kullanın
-2. **İçerik**: Temel argümanları, verileri ve önemli noktaları vurgulayın
-3. **Stil**: Net, anlaşılır ve tarafsız bir dil kullanın
-4. **Uzunluk**: Orijinal içeriğin %15-20'si uzunluğunda
-5. **Format**: Markdown formatında düzenleyin
+1. **Structure**: Use main headings (##) and subheadings (###)
+2. **Content**: Highlight key arguments, data, and important points
+3. **Style**: Use clear, concise, and neutral language
+4. **Length**: Approximately 15-20% of the original text length
+5. **Format**: Organize in Markdown format
 
-Önemli:
-- Teknik terimleri açıklayın
-- Anahtar istatistikleri koruyun
-- Yazarın bakış açısını yansıtın
-- Gereksiz detayları atlayın
+Important:
 
-Metin:`
+* Explain technical terms
+* Preserve key statistics
+* Reflect the author’s perspective
+* Omit unnecessary details
+
+Text:`
     };
 
     // UI Elementleri
