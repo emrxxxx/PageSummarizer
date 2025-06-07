@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Sayfa Özetleyici
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.0
 // @description  Sayfayı Mistral API ile özetleyen compact panel
 // @author       emrxxxx
 // @match        *://*/*
