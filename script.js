@@ -490,15 +490,26 @@ Text:`
     }
 
     function showSummaryPanel() {
-        if (summaryPanel) {
-            summaryPanel.style.transform = 'translateX(0)';
-        }
+        if (!summaryPanel) return;
+
+        summaryPanel.style.display = 'block';
+        requestAnimationFrame(() => {
+            summaryPanel.style.opacity = '1';
+            summaryPanel.style.transform = 'scale(1)';
+            summaryPanel.style.pointerEvents = 'auto';
+        });
     }
 
     function hideSummaryPanel() {
-        if (summaryPanel) {
-            summaryPanel.style.transform = 'translateX(400px)';
-        }
+        if (!summaryPanel) return;
+
+        summaryPanel.style.opacity = '0';
+        summaryPanel.style.transform = 'scale(0.9)';
+        summaryPanel.style.pointerEvents = 'none';
+
+        setTimeout(() => {
+            if (summaryPanel) summaryPanel.style.display = 'none';
+        }, 300);
     }
 
     // Uygulamayı Başlat
