@@ -18,4 +18,4 @@ A Tampermonkey userscript that summarizes webpage content using the Mistral API.
 3. Set your Mistral API key from the Tampermonkey menu.
 4. Click the summary button or press `Ctrl+Shift+S` to generate a summary.
 
-![image](https://github.com/user-attachments/assets/b6201b69-f5d9-4706-a237-af35c0bee04c)
+<img src="https://github.com/user-attachments/assets/b6201b69-f5d9-4706-a237-af35c0bee04c" style="width:30%;" />
