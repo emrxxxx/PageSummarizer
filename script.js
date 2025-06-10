@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Sayfa Özetleyici
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Herhangi bir web sayfasını Mistral AI ile özetleyen modern ve şık bir panel sunar.
+// @version      1.2
+// @description  Herhangi bir web sayfasını, sadece ana içeriği akıllıca bularak Mistral AI ile özetler.
 // @author       emrxxxx
 // @match        *://*/*
 // @exclude      *://www.youtube.com/*
@@ -23,14 +23,17 @@
     if (window.trustedTypes && window.trustedTypes.createPolicy) {
         try {
             window.trustedTypes.createPolicy('default', {
-                createHTML: (string) => DOMPurify.sanitize(string, { RETURN_TRUSTED_TYPE: true }),
+                createHTML: (string) => DOMPurify.sanitize(string, {
+                    RETURN_TRUSTED_TYPE: true
+                })
             });
-        } catch (e) { /* Politika zaten varsa sorun değil */ }
+        } catch (e) {
+            /* Politika zaten varsa sorun değil */ }
     }
 
     const CONFIG = {
         API_KEY: GM_getValue('mistral_api_key', ''),
-        MODEL: 'mistral-small-latest',
+        MODEL: 'codestral-latest',
         CHUNK_SIZE: 15000,
         TEMPERATURE: 0.4,
     };
@@ -43,7 +46,7 @@
 
     function setApiKey() {
         const newKey = prompt('Lütfen Mistral API anahtarınızı girin:', CONFIG.API_KEY);
-        if (newKey !== null) {
+        if (newKey) {
             GM_setValue('mistral_api_key', newKey.trim());
             CONFIG.API_KEY = newKey.trim();
             alert('API anahtarı başarıyla kaydedildi!');
@@ -51,7 +54,7 @@
     }
 
     function resetSettings() {
-        if (confirm('Tüm ayarları sıfırlamak istediğinize emin misiniz? Bu işlem API anahtarınızı da silecektir.')) {
+        if (confirm('Tüm ayarları sıfırlamak istediğinize emin misiniz?')) {
             GM_setValue('mistral_api_key', '');
             CONFIG.API_KEY = '';
             alert('Ayarlar sıfırlandı!');
@@ -66,16 +69,38 @@
         btn.innerHTML = '📄';
         btn.title = 'Sayfayı Özetle (Ctrl+Shift+S)';
         Object.assign(btn.style, {
-            position: 'fixed', bottom: '30px', right: '30px', width: '40px', height: '40px',
-            borderRadius: '50%', border: 'none', background: '#2a2a2a', color: 'white',
-            fontSize: '16px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-            zIndex: '2147483640', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', opacity: '0.9', padding: '0', lineHeight: '1',
+            position: 'fixed',
+            bottom: '30px',
+            right: '30px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            border: 'none',
+            background: '#2a2a2a',
+            color: 'white',
+            fontSize: '16px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            zIndex: '2147483640',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: '0.9',
+            padding: '0',
+            lineHeight: '1',
         });
 
-        // DEĞİŞİKLİK: Mouseover rengi mavi yapıldı.
-        btn.addEventListener('mouseover', () => { btn.style.background = '#0984e3'; btn.style.transform = 'scale(1.1) rotate(5deg)'; btn.style.opacity = '1'; });
-        btn.addEventListener('mouseout', () => { btn.style.background = '#2a2a2a'; btn.style.transform = 'scale(1) rotate(0deg)'; btn.style.opacity = '0.9'; });
+        btn.addEventListener('mouseover', () => {
+            btn.style.background = '#0984e3';
+            btn.style.transform = 'scale(1.1) rotate(5deg)';
+            btn.style.opacity = '1';
+        });
+        btn.addEventListener('mouseout', () => {
+            btn.style.background = '#2a2a2a';
+            btn.style.transform = 'scale(1) rotate(0deg)';
+            btn.style.opacity = '0.9';
+        });
         btn.addEventListener('click', handleSummarizeClick);
 
         document.body.appendChild(btn);
@@ -109,7 +134,6 @@
 
     function createSummaryPanel() {
         if (summaryPanel) return summaryPanel;
-
         summaryPanel = document.createElement('div');
         summaryPanel.id = 'summary-panel';
         summaryPanel.style.cssText = `
@@ -120,7 +144,6 @@
             overflow: hidden; display: flex; flex-direction: column;
             transform: translateX(calc(100% + 90px)); opacity: 0;
         `;
-
         const header = document.createElement('div');
         header.style.cssText = `padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); cursor: move; flex-shrink: 0;`;
         const title = document.createElement('h3');
@@ -131,36 +154,39 @@
         closeBtn.style.cssText = `background: none; border: none; color: white; font-size: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; line-height: 1; padding: 0 4px;`;
         closeBtn.addEventListener('click', hideSummaryPanel);
         header.append(title, closeBtn);
-
         const content = document.createElement('div');
         content.id = 'summary-content';
         content.style.cssText = `padding: 16px; overflow-y: auto; line-height: 1.5; font-size: 14px; flex-grow: 1;`;
         content.textContent = 'Özet bekleniyor...';
-
         summaryPanel.append(header, content);
         document.body.appendChild(summaryPanel);
-
         makeDraggable(summaryPanel, header);
         return summaryPanel;
     }
 
-    function updateSummaryPanel(htmlContent, { isError = false, isLoading = false } = {}) {
+    function updateSummaryPanel(htmlContent, {
+        isError = false,
+        isLoading = false
+    } = {}) {
         const panelContent = document.getElementById('summary-content');
         if (!panelContent) return;
-
         panelContent.style.color = isError ? '#ff6b6b' : 'inherit';
-
         if (isError || isLoading) {
             panelContent.textContent = htmlContent;
         } else {
-            const cleanHtml = DOMPurify.sanitize(htmlContent, { RETURN_TRUSTED_TYPE: true });
+            const cleanHtml = DOMPurify.sanitize(htmlContent, {
+                RETURN_TRUSTED_TYPE: true
+            });
             panelContent.innerHTML = cleanHtml;
         }
     }
 
     function showSummaryPanel() {
         if (!summaryPanel) createSummaryPanel();
-        requestAnimationFrame(() => { summaryPanel.style.transform = 'translateX(0)'; summaryPanel.style.opacity = '1'; });
+        requestAnimationFrame(() => {
+            summaryPanel.style.transform = 'translateX(0)';
+            summaryPanel.style.opacity = '1';
+        });
     }
 
     function hideSummaryPanel() {
@@ -169,65 +195,104 @@
         summaryPanel.style.opacity = '0';
     }
 
+    // --- DEĞİŞİKLİK: AKILLI İÇERİK ÇIKARMA MANTIĞI ---
     function extractPageContent() {
-        const bodyClone = document.body.cloneNode(true);
-        const unwantedSelectors = ['script', 'style', 'nav', 'header', 'footer', 'aside', 'form', 'iframe', '[aria-hidden="true"]', '.ad', '.advertisement', '.popup', '.modal'];
-        bodyClone.querySelectorAll(unwantedSelectors.join(',')).forEach(el => el.remove());
+        console.log('[Sayfa Özetleyici] Akıllı içerik çıkarma başlıyor...');
 
-        const mainContentSelectors = ['article', 'main', '[role="main"]', '.post-content', '.entry-content', '#content'];
-        let mainElement = null;
-        for (const selector of mainContentSelectors) {
-            mainElement = bodyClone.querySelector(selector);
-            if (mainElement) break;
+        const candidates = document.querySelectorAll('main, article, div[id*="content"], div[class*="content"], div[id*="post"], div[class*="post"]');
+        let bestElement = null;
+        let maxScore = -1;
+
+        candidates.forEach(candidate => {
+            // Görünür olmayan elementleri atla
+            if (candidate.offsetParent === null) return;
+
+            const text = candidate.textContent || '';
+            if (text.length < 250) return;
+
+            let score = 0;
+            const className = (candidate.className || '') + ' ' + (candidate.id || '');
+
+            // Negatif anahtar kelimeler için ceza puanı
+            if (/(comment|sidebar|nav|footer|header|ad|social|related|popup|modal)/i.test(className)) {
+                score -= 100;
+            }
+
+            // Pozitif anahtar kelimeler için bonus
+            if (/(article|post|content|body|entry)/i.test(className)) {
+                score += 50;
+            }
+
+            // Paragraf sayısı en önemli kriter
+            const paragraphs = candidate.querySelectorAll('p');
+            score += paragraphs.length * 25;
+
+            // Virgül sayısı, düz metin olduğunu gösterir
+            score += (text.match(/,/g) || []).length;
+
+            // Puanı, metin uzunluğuna bölerek yoğunluğu bul (çok büyük ama boş div'leri engeller)
+            score = score / (text.length + 1);
+
+            if (score > maxScore) {
+                maxScore = score;
+                bestElement = candidate;
+            }
+        });
+
+        if (bestElement) {
+            console.log(`[Sayfa Özetleyici] En iyi aday bulundu: ${bestElement.tagName}#${bestElement.id}.${bestElement.className.split(' ').join('.')} (Puan: ${maxScore.toFixed(4)})`);
+            // Seçilen elementten gereksiz alt etiketleri temizle
+            const clone = bestElement.cloneNode(true);
+            clone.querySelectorAll('button, form, input, .ad, .advertisement').forEach(el => el.remove());
+            return (clone.textContent || '').replace(/\s+/g, ' ').trim();
         }
 
-        const textSource = mainElement || bodyClone;
-        return textSource.textContent.replace(/\s+/g, ' ').trim();
+        // Yedek plan: Hiçbir şey bulunamazsa, body'yi temizle
+        console.log('[Sayfa Özetleyici] Aday bulunamadı, yedek plana geçiliyor.');
+        const bodyClone = document.body.cloneNode(true);
+        const unwantedSelectors = ['script', 'style', 'nav', 'header', 'footer', 'aside', 'form', 'iframe', '[aria-hidden="true"]'];
+        bodyClone.querySelectorAll(unwantedSelectors.join(',')).forEach(el => el.remove());
+        return (bodyClone.textContent || '').replace(/\s+/g, ' ').trim();
     }
+
 
     async function handleSummarizeClick() {
         if (isLoading) return;
         isLoading = true;
-
         const btn = document.getElementById('summary-btn');
         btn.textContent = '⏳';
         btn.style.animation = 'spin 1s linear infinite';
-
         createSummaryPanel();
         showSummaryPanel();
-        // DEĞİŞİKLİK: Yükleme mesajı basitleştirildi ve ara durumlar kaldırıldı.
-        updateSummaryPanel('Sayfa özetleniyor...\nBu işlem sayfanın uzunluğuna göre biraz zaman alabilir.', { isLoading: true });
-
+        updateSummaryPanel('Sayfa özetleniyor...', {
+            isLoading: true
+        });
         try {
             if (!CONFIG.API_KEY) throw new Error('Lütfen Tampermonkey menüsünden API anahtarınızı ayarlayın.');
-
             const content = extractPageContent();
             if (!content || content.length < 200) throw new Error('Özetlemek için yeterli metin içeriği bulunamadı.');
-
             const chunks = [];
             for (let i = 0; i < content.length; i += CONFIG.CHUNK_SIZE) {
                 chunks.push(content.substring(i, i + CONFIG.CHUNK_SIZE));
             }
-
             let summary;
             if (chunks.length === 1) {
                 summary = await processApiRequest(chunks[0], 'initial');
             } else {
                 const intermediateSummaries = [];
                 for (const chunk of chunks) {
-                    const intermediateSummary = await processApiRequest(chunk, 'intermediate');
-                    intermediateSummaries.push(intermediateSummary);
+                    intermediateSummaries.push(await processApiRequest(chunk, 'intermediate'));
                 }
                 const combinedIntermediate = intermediateSummaries.join('\n\n---\n\n');
                 summary = await processApiRequest(combinedIntermediate, 'final');
             }
-
             const finalHtml = marked.parse(summary);
             updateSummaryPanel(finalHtml);
-
         } catch (error) {
             console.error('[Sayfa Özetleyici] Hata:', error);
-            updateSummaryPanel(`❌ Hata: ${error.message}`, { isError: true });
+            updateSummaryPanel(`❌ Hata: ${error.message}`, {
+                isError: true
+            });
         } finally {
             isLoading = false;
             btn.textContent = '📄';
@@ -237,7 +302,7 @@
 
     function processApiRequest(text, type) {
         let system_prompt;
-        switch(type) {
+        switch (type) {
             case 'initial':
                 system_prompt = `You are an expert summarizer. Analyze the following webpage content and provide a detailed, well-structured summary in Turkish using Markdown. Use headings (###), bullet points (*), and bold text (**) to highlight key information.`;
                 break;
@@ -248,24 +313,34 @@
                 system_prompt = `You are an expert editor. The following text consists of several partial summaries of a single webpage. Your task is to synthesize them into a single, cohesive, and well-structured final summary in Turkish. Use Markdown for formatting (headings, lists, bold). Remove redundancies and create a fluid narrative.`;
                 break;
         }
-
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
                 url: 'https://api.mistral.ai/v1/chat/completions',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CONFIG.API_KEY}` },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CONFIG.API_KEY}`
+                },
                 data: JSON.stringify({
                     model: CONFIG.MODEL,
-                    messages: [ { role: 'system', content: system_prompt }, { role: 'user', content: text } ],
-                    temperature: CONFIG.TEMPERATURE,
+                    messages: [{
+                        role: 'system',
+                        content: system_prompt
+                    }, {
+                        role: 'user',
+                        content: text
+                    }],
+                    temperature: CONFIG.TEMPERATURE
                 }),
                 timeout: 60000,
                 onload: (response) => {
                     if (response.status >= 200 && response.status < 300) {
                         const data = JSON.parse(response.responseText);
-                        const content = data.choices?.[0]?.message?.content;
-                        if (content) resolve(content.trim());
-                        else reject(new Error('API yanıtı boş veya geçersiz.'));
+                        if (data.choices?.[0]?.message?.content) {
+                            resolve(data.choices[0].message.content.trim());
+                        } else {
+                            reject(new Error('API yanıtı boş veya geçersiz.'));
+                        }
                     } else {
                         const errorData = JSON.parse(response.responseText);
                         reject(new Error(errorData.error?.message || `API Hatası (${response.status})`));
@@ -278,21 +353,33 @@
     }
 
     function makeDraggable(element, handle) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        let pos1 = 0,
+            pos2 = 0,
+            pos3 = 0,
+            pos4 = 0;
         handle.onmousedown = (e) => {
-            e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY;
-            document.onmouseup = closeDragElement; document.onmousemove = elementDrag;
+            e.preventDefault();
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
         };
+
         function elementDrag(e) {
             e.preventDefault();
-            pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
-            pos3 = e.clientX; pos4 = e.clientY;
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
             element.style.top = (element.offsetTop - pos2) + "px";
             element.style.left = (element.offsetLeft - pos1) + "px";
-            element.style.right = 'auto'; element.style.bottom = 'auto';
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
         }
+
         function closeDragElement() {
-            document.onmouseup = null; document.onmousemove = null;
+            document.onmouseup = null;
+            document.onmousemove = null;
         }
     }
 
